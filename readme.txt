@@ -15,9 +15,9 @@ Get the all albums from Facebook Page by using Facebook Graph API.
 then get albums/photos from your Facebook Page.
 
 Once set up the API key and Facebook Page's address in admin panel, 
-you can call `facebook_page_albums_get_album_list` or `facebook_page_albums_get_photo_list` function for getting album/photo list.
+you can call **`facebook_page_albums_get_album_list`** or **`facebook_page_albums_get_photo_list`** function to get album/photo list.
 
-This version provide only a few functions, you have to develop gallery page by using html and javascript.
+This version provide only a few functions, you have to develop your gallery page by using html and javascript.
 
 Getting through API is slow, so please use cache system something like <a href="http://wordpress.org/extend/plugins/wp-super-cache/">wp-super-cache</a>.
 
@@ -35,8 +35,8 @@ Getting through API is slow, so please use cache system something like <a href="
 == Screenshots ==
 
 1. **Setting** - you can set up the API key and Facebook page address.
-2. **Album List** - `facebook_page_albums_get_album_list` provide the album list.
-3. **Photo List** - `facebook_page_albums_get_photo_list` provide the photo list.
+2. **Album List** - `facebook_page_albums_get_album_list` function provide the album list.
+3. **Photo List** - `facebook_page_albums_get_photo_list` function provide the photo list.
 
 == Frequently Asked Questions ==
 
