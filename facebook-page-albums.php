@@ -1,11 +1,11 @@
 <?php
 /*
  Plugin Name: Facebook Page Albums
- Plugin URI:
- Description: Get the All album from Facebook Page.
+ Plugin URI: http://wordpress.org/extend/plugins/facebook-page-albums/
+ Description: Get the all albums/photos from your Facebook Page.
  Version: 1.0.1
  Author: Daiki Suganuma
- Author URI: 
+ Author URI: http://se-suganuma.blogspot.com/
  */
 
 /**
