@@ -3,7 +3,7 @@ Contributors: daiki.suganuma
 Tags: facebook, facebook pages, facebook graph api, album, photos
 Requires at least: 3.2
 Tested up to: 3.4
-Stable tag: 1.0.0
+Stable tag: 1.0.1
 License: Apache License Version 2.0
 License URI: http://www.apache.org/licenses/LICENSE-2.0
 
@@ -52,3 +52,6 @@ If a lots of request came to me, I will develop the feature providing html and j
 
 = 1.0 =
 * First release.
+
+= 1.0.1 =
+* Fixed paging bug.

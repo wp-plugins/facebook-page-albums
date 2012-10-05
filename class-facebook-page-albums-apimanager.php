@@ -110,9 +110,9 @@ class FacebookPageAlbumsAPIManager {
 		$param = array();
 		if (!empty($args['per_page'])) {
 			$param[] = 'limit=' . $args['per_page'];
-		}
-		if (!empty($args['paged'])) {
-			$param[] = 'offset=' . $args['paged'];
+			if (!empty($args['paged'])) {
+				$param[] = 'offset=' . ($args['paged'] - 1) * $args['per_page'];
+			}
 		}
 		$photos = $this->get($album_id . '/photos', implode('&', $param));
 
