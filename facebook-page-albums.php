@@ -3,7 +3,7 @@
  Plugin Name: Facebook Page Albums
  Plugin URI:
  Description: Get the All album from Facebook Page.
- Version: 1.0.0
+ Version: 1.0.1
  Author: Daiki Suganuma
  Author URI: 
  */
