@@ -50,7 +50,7 @@ If a lots of request came to me, I will develop the feature providing html and j
 
 == Changelog ==
 
-= 1.0 =
+= 1.0.0 =
 * First release.
 
 = 1.0.1 =
