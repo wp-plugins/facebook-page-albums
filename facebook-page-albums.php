@@ -3,13 +3,13 @@
  Plugin Name: Facebook Page Albums
  Plugin URI: http://wordpress.org/extend/plugins/facebook-page-albums/
  Description: Get the all albums/photos from your Facebook Page.
- Version: 1.1.0
+ Version: 1.1.1
  Author: Daiki Suganuma
  Author URI: http://se-suganuma.blogspot.com/
  */
 
 /**
- *  Copyright 2012 Daiki Suganuma  (email : daiki.suganuma@gmail.com)
+ *  Copyright 2014 Daiki Suganuma  (email : daiki.suganuma@gmail.com)
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may
  * not use this file except in compliance with the License. You may obtain

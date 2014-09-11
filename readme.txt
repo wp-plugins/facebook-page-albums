@@ -2,8 +2,8 @@
 Contributors: daiki.suganuma
 Tags: facebook, facebook pages, facebook graph api, album, photos
 Requires at least: 3.2
-Tested up to: 3.6
-Stable tag: 1.1.0
+Tested up to: 4.0
+Stable tag: 1.1.1
 License: Apache License Version 2.0
 License URI: http://www.apache.org/licenses/LICENSE-2.0
 
@@ -18,6 +18,8 @@ This version provide only a few functions for your Theme, you have to develop th
 Once set up the API key and Facebook Page's address in admin panel, 
 you can call **`facebook_page_albums_get_album_list`** or **`facebook_page_albums_get_photo_list`** function to get album/photo list.
 
+Or you just copy 'themes/example' in your themes folder, and activate in admin panel. you will see album list and photo list of facebook page.
+
 This plugin is using <a href="https://developers.facebook.com/docs/php/gettingstarted/">Facebook PHP SDK</a>.
 
 ### Demo ###
@@ -26,9 +28,9 @@ This plugin is using <a href="https://developers.facebook.com/docs/php/gettingst
 
 == Installation ==
 
-1. Upload `facebook-page-albums` to the `/wp-content/plugins/` directory
-2. Activate the plugin through the 'Plugins' menu in WordPress
-3. Go to 'Facebook Page Albums' and set up. you can get the API key from <a href="https://developers.facebook.com/apps">Facebook Developers</a>
+1. Upload `facebook-page-albums` to the `/wp-content/plugins/` directory.
+2. Activate the plugin through the 'Plugins' menu in admin panel.
+3. Go to 'Facebook Page Albums' under Settings menu, and set up for API. you can get the API key from <a href="https://developers.facebook.com/apps">Facebook Developers</a>
 4. Call `facebook_page_albums_get_album_list` php function in your theme, you can get album list as array.
 
 ### Example for Album List ###
@@ -71,7 +73,9 @@ This plugin is using <a href="https://developers.facebook.com/docs/php/gettingst
 
 = I did activate and set up the Configuration. What's next? =
 
-You have to do PHP coding in your theme. `facebook_page_albums_get_album_list` provide array list.
+You have to develop PHP in your theme. 
+Please see 'themes/example/index.php', this is very simple sample code.
+Or you just copy 'themes/example' in your themes folder, and activate in admin panel. you will see album list and photo list of facebook page.
 
 = I don't know PHP, HTML, JavaScript =
 
@@ -88,4 +92,7 @@ If a lots of request came to me, I will develop the feature providing html and j
 = 1.1.0 =
 * Update Facebook PHP SDK v3.2.2
 * Add 'Album Cache' option on setting page
+
+= 1.1.1 =
+* Add Example Theme
 
