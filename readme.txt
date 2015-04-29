@@ -1,9 +1,9 @@
 === Plugin Name ===
 Contributors: daiki.suganuma
 Tags: facebook, facebook pages, facebook graph api, album, photos
-Requires at least: 3.2
-Tested up to: 4.0
-Stable tag: 1.1.1
+Requires at least: 4.0
+Tested up to: 4.2.1
+Stable tag: 2.0.0
 License: Apache License Version 2.0
 License URI: http://www.apache.org/licenses/LICENSE-2.0
 
@@ -18,9 +18,11 @@ This version provide only a few functions for your Theme, you have to develop th
 Once set up the API key and Facebook Page's address in admin panel, 
 you can call **`facebook_page_albums_get_album_list`** or **`facebook_page_albums_get_photo_list`** function to get album/photo list.
 
-Or you just copy 'themes/example' in your themes folder, and activate in admin panel. you will see album list and photo list of facebook page.
+Or you just copy 'themes/example' in your themes folder, and activate in admin panel. you will see album list and photo list of your facebook page.
 
 This plugin is using <a href="https://developers.facebook.com/docs/php/gettingstarted/">Facebook PHP SDK</a>.
+This SDK PHP 5.4 or greater.
+
 
 ### Demo ###
 
@@ -31,37 +33,8 @@ This plugin is using <a href="https://developers.facebook.com/docs/php/gettingst
 1. Upload `facebook-page-albums` to the `/wp-content/plugins/` directory.
 2. Activate the plugin through the 'Plugins' menu in admin panel.
 3. Go to 'Facebook Page Albums' under Settings menu, and set up for API. you can get the API key from <a href="https://developers.facebook.com/apps">Facebook Developers</a>
-4. Call `facebook_page_albums_get_album_list` php function in your theme, you can get album list as array.
-
-### Example for Album List ###
-<pre><code><?php
-	$list = facebook_page_albums_get_album_list();
-?>
-	<ol class="album-list">
-		<?php foreach ($list as $item) : ?>
-			<?php
-			if ($item['type'] != 'normal' || $item['name'] == 'Cover Photos') continue;
-			?>
-			<li class="album">
-				<?php if ($thumb = $item['cover_photo_data']):?>
-				<div class="album-thumb">
-					<a href="<?php echo add_query_arg('id', $item['id']);?>">
-						<img src="<?php echo $thumb['picture'];?>"/>
-					</a>
-				</div>
-				<?php endif; ?>
-				<div class="album-info">
-					<h5><a href="<?php echo add_query_arg('id', $item['id']);?>"><?php echo $item['name'];?></a></h5>
-					<div class="counts">
-						<div class="photos-count"><?php echo $item['count'];?></div>
-						<?php if (!empty($thumb['comments'])) :?><div class="comments-count"><?php echo count($thumb['comments']['data']);?></div><?php endif;?>
-						<?php if (!empty($thumb['likes'])) :?><div class="likes-count"><?php echo count($thumb['likes']['data']);?></div><?php endif;?>
-					</div>
-				</div>
-			</li>
-		<?php endforeach;?>
-	</ol>
-</code></pre>
+4. Copy 'themes/example' to your theme and activate in admin panel. You will see album list of your Facebook Page.
+5. Develop your theme using PHP.
 
 == Screenshots ==
 
@@ -95,4 +68,9 @@ If a lots of request came to me, I will develop the feature providing html and j
 
 = 1.1.1 =
 * Add Example Theme
+
+= 2.0.0 =
+* Update Facebook PHP SDK v4.0
+* Update example theme
+* Changed data structure of "likes" and "comments".
 

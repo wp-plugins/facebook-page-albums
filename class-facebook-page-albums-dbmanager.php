@@ -14,31 +14,32 @@
 class FacebookPageAlbumsDBManager {
 	protected $api_config = 'facebook_page_albums_api_config';
 	protected $common_config = 'facebook_page_albums_common_config';
-	protected $album_data_config = 'facebook_page_albums_album_data';
-	protected $album_data_update_config = 'facebook_page_albums_album_data_update';
+	protected $album_data = 'facebook_page_albums_album_data';
+	protected $album_data_update = 'facebook_page_albums_album_data_update';
+
 
 	/**
-	 * constructer
+	 * Constructor
 	 */
 	public function __construct() {
 	}
 
 
 	/**
-	 * Excute when this plugin is actived
+	 * Execute when this plugin is activated
 	 */
 	public function initialize() {
 	}
 
 
 	/**
-	 * Excute when this plugin is deactived
+	 * Execute when this plugin is deactivated
 	 */
 	public function destroy() {
 		delete_option( $this->api_config );
 		delete_option( $this->common_config );
-		delete_option( $this->album_data_config );
-		delete_option( $this->album_data_update_config );
+		delete_option( $this->album_data );
+		delete_option( $this->album_data_update );
 	}
 
 
@@ -58,6 +59,13 @@ class FacebookPageAlbumsDBManager {
 
 	/**
 	 * set api option
+	 *
+	 * @param Array  $args {
+	 *   @type String appId
+	 *   @type String secret
+	 *   @type String pageId
+	 * }
+	 * @return Array
 	 */
 	public function set_api_option( $args=array() ) {
 		$defaults = array(
@@ -84,6 +92,11 @@ class FacebookPageAlbumsDBManager {
 
 	/**
 	 * set common option
+	 *
+	 * @param Array  $args {
+	 *   @type Boolean enable_album_cache
+	 * }
+	 * @return Array
 	 */
 	public function set_common_option( $args=array() ) {
 		$defaults = array(
@@ -95,34 +108,37 @@ class FacebookPageAlbumsDBManager {
 
 
 	/**
-	 *
+	 * Get Album List from Database
 	 */
 	public function get_album_list() {
 		// @todo pagination
-		return get_option( $this->album_data_config );
+		return get_option( $this->album_data );
 	}
 
 
 	/**
+	 * Save Album List to Database for Cache
 	 *
+	 * @param Array  $data
+	 * @return Boolean
 	 */
 	public function save_album_list( $data ) {
 		// @todo use table of database.
-		update_option( $this->album_data_config, $data );
+		update_option( $this->album_data, $data );
 		if (!empty($data)) {
-			update_option( $this->album_data_update_config, current_time('timestamp') );
+			update_option( $this->album_data_update, current_time('timestamp') );
 		} else {
-			delete_option( $this->album_data_update_config );
+			delete_option( $this->album_data_update );
 		}
 		return true;
 	}
 
 
 	/**
-	 *
+	 * Cache Time
 	 */
 	public function get_album_list_updated_time() {
 		// @todo pagination
-		return get_option( $this->album_data_update_config );
+		return get_option( $this->album_data_update );
 	}
-}?>
+}

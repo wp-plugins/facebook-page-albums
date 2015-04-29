@@ -6,20 +6,29 @@
  * file that was distributed with this source code.
  */
 
+// Load Facebook SDK
+define('FACEBOOK_SDK_V4_SRC_DIR', FACEBOOK_PAGE_ALBUMS_DIR . '/lib/facebook-php-sdk-v4/src/Facebook/');
+require_once( FACEBOOK_PAGE_ALBUMS_DIR . '/lib/facebook-php-sdk-v4/autoload.php' );
+require_once( FACEBOOK_PAGE_ALBUMS_DIR . '/class-facebook-page-albums-dbmanager.php' );
+use Facebook\FacebookSession;
+use Facebook\FacebookRequest;
+use Facebook\FacebookRequestException;
+
 /**
  * API Manager
  *
  * @package     facebook-page-albums
  */
 class FacebookPageAlbumsAPIManager {
-	public   $client  = null;
-	public   $error   = array();
-	private  $db      = null;
-	private  $page_id = null;
+	private $session = null;
+	private $db = null;
+	private $page_id = null;
+	public $client = null;
+	public $error = array();
 
 
 	/**
-	 * constructer
+	 * Constructor
 	 */
 	public function __construct() {
 		$this->init();
@@ -29,10 +38,7 @@ class FacebookPageAlbumsAPIManager {
 	/**
 	 * Create api instance.
 	 */
-	private function init() {
-		require_once( 'lib/facebook.php' );
-		require_once( 'class-facebook-page-albums-dbmanager.php' );
-
+	protected function init() {
 		//
 		// Get Config
 		//
@@ -44,13 +50,15 @@ class FacebookPageAlbumsAPIManager {
 		if (empty($config['appId']) || empty($config['secret'])) {
 			return false;
 		}
-		if (!isset($config['fileUpload'])) {
-			$config['fileUpload'] = false; // optional
-		}
 		$this->page_id = $config['pageId'];
 
-		//@see lib/facebook.php
-		$this->client = new Facebook($config);
+
+		//
+		// Get Session for Facebook usin SDK
+		// @see https://developers.facebook.com/docs/php/gettingstarted/4.0.0
+		//
+		FacebookSession::setDefaultApplication($config['appId'], $config['secret']);
+		$this->session = FacebookSession::newAppSession();
 
 		return true;
 	}
@@ -59,22 +67,20 @@ class FacebookPageAlbumsAPIManager {
 	/**
 	 * Get data by using facebook graph api.
 	 *
-	 * @param  string $query  Graph API Query
-	 * @param  string || array $param  Parameter
-	 * @return array
+	 * @param  String $query  Graph API Query
+	 * @param  String|Array $params Parameter
+	 * @return Array
 	 */
 	public function get($query=null, $params=array()) {
-		if (empty($query)) {
-			$query = $this->page_id;
-		}
-		if (empty($query) || empty($this->client)) {
+		if (empty($query) ||
+			empty($this->session)) {
 			return false;
 		}
 
 		//
 		// Build query string
 		//
-		$slug = '/' . $query;
+		$slug = $query;
 		if (!empty($params)) {
 			if (is_array($params)) {
 				$params = implode('&', $params);
@@ -87,63 +93,146 @@ class FacebookPageAlbumsAPIManager {
 		// Send query through Facebook PHP SDK
 		//
 		try {
-			$result = $this->client->api($slug);
-		} catch (FacebookApiException $e) {
-			error_log($e);
-			$result = false;
+			$response = (new FacebookRequest($this->session, 'GET', $slug))->execute();
+			$results = $response->getResponse();
+		} catch (FacebookRequestException $ex) {
+			$this->error = $ex->getMessage();
+			$results = false;
+			error_log($ex);
+		} catch (\Exception $ex) {
+			$this->error = $ex->getMessage();
+			$results = false;
+			error_log($ex);
 		}
-		return $result;
+
+		return $results;
 	}
 
 
 	/**
 	 * Get Album list of Facebook Page
 	 *
-	 * @param  array  $args    Arguments.
 	 * @see  https://developers.facebook.com/docs/reference/api/album/
+	 * @param  array  $args    Arguments.
 	 * @return array
 	 */
 	public function get_albums($args=array()) {
-		$defaults = array(
-			'page_id' => $this->page_id,
-			'cover_photo' => true,
+		$args = wp_parse_args($args, array(
+			'cover_photo' => false,
+			'fields' => array(
+				'id',
+				'name',
+				'link',
+				'cover_photo',
+				'privacy',
+				'count',
+				'type',
+				'created_time',
+				'updated_time',
+				'can_upload',
+				'likes.limit(1).summary(true)',
+				'comments.limit(1).summary(true)',
+			),
 			'per_page' => 25,
 			'paged'    => 1
-		);
-		$args = wp_parse_args($args, $defaults);
+		));
 
 
 		//
-		// Build pagenation parameters
+		// Build page parameters
 		//
 		$params = array();
-		$params[] = 'fields=albums';
 		if (!empty($args['per_page'])) {
 			$params[] = 'limit=' . $args['per_page'];
 			if (!empty($args['paged'])) {
 				$params[] = 'offset=' . ($args['paged'] - 1) * $args['per_page'];
 			}
 		}
+		// Fields
+		if (!empty($args['fields'])) {
+			$params[] = 'fields=' . implode(',', $args['fields']);
+		}
 
 		// Get
-		$albums = $this->get($args['page_id'], $params);
-
-		// Do not need the Cover Photo
-		if (empty($albums['albums']['data']) || empty($args['cover_photo'])) {
-			return $albums['albums']['data'];
+		if (!$albums = $this->get('/' . $this->page_id . '/albums', $params)) {
+			return false;
 		}
 
 
 		//
-		// Get Cover Photo Data through Facebook API
+		// Loop
 		//
 		$data = array();
-		foreach ($albums['albums']['data'] as $item) {
-			if (empty($item['cover_photo'])) continue;
-			$item['cover_photo_data'] = $this->get($item['cover_photo']);
+		foreach ($albums->data as $item) {
+			$item = $this->get_album_data($item);
+
+			// Cover Photo
+			if ($item['type'] == 'cover' && empty($args['cover_photo'])) {
+				continue;
+			}
+
 			$data[] = $item;
 		}
+
 		return $data;
+	}
+
+
+	/**
+	 * Convert Data
+	 *
+	 * @param  Object  $item
+	 * @return Array
+	 */
+	protected function get_album_data($item) {
+		$item = (array) $item;
+
+		// Counts
+		$item['likes'] = empty($item['likes']->summary->total_count) ? 0 : $item['likes']->summary->total_count;
+		$item['comments'] = empty($item['comments']->summary->total_count) ? 0 : $item['comments']->summary->total_count;
+
+		// Get Cover Photo Data through Facebook API
+		if ($cover_id = $item['cover_photo']) {
+			if ($thumb = $this->get('/' . $cover_id, array(
+				'fields=link,picture,source,height,width'
+			))) {
+				$item['cover_photo_data'] = (array) $thumb;
+			}
+		}
+
+		return $item;
+	}
+
+
+	/**
+	 * Get Album list of Facebook Page
+	 *
+	 * @param  String  $album_id
+	 * @return array
+	 */
+	public function get_album($album_id) {
+		$fields = array(
+			'id',
+			'name',
+			'link',
+			'cover_photo',
+			'privacy',
+			'count',
+			'type',
+			'created_time',
+			'updated_time',
+			'can_upload',
+			'likes.limit(1).summary(true)',
+			'comments.limit(1).summary(true)',
+		);
+
+		if (!$data = $this->get( '/' . $album_id,  array(
+			'fields=' . implode(',', $fields)
+		))) {
+			return false;
+		}
+
+		return $this->get_album_data($data);
 	}
 
 
@@ -156,6 +245,19 @@ class FacebookPageAlbumsAPIManager {
 	public function get_photos($args=null) {
 		$defaults = array(
 			'album_id' => null,
+			'fields' => array(
+				'id',
+				'height',
+				'width',
+				'images',
+				'link',
+				'picture',
+				'source',
+				'created_time',
+				'updated_time',
+				'likes.limit(1).summary(true)',
+				'comments.limit(1).summary(true)',
+			),
 			'per_page' => 25,
 			'paged'    => 1
 		);
@@ -174,16 +276,29 @@ class FacebookPageAlbumsAPIManager {
 				$params[] = 'offset=' . ($args['paged'] - 1) * $args['per_page'];
 			}
 		}
+		// Fields
+		if (!empty($args['fields'])) {
+			$params[] = 'fields=' . implode(',', $args['fields']);
+		}
 
 		// Send
-		$photos = $this->get($args['album_id'] . '/photos', $params);
+		$photos = $this->get('/' . $args['album_id'] . '/photos', $params);
 
-		if (!empty($photos['data'])) {
-			return $photos['data'];
-		} else {
-			return $photos;
+
+		//
+		// Loop
+		//
+		$data = array();
+		foreach ($photos->data as $item) {
+			$item = (array) $item;
+
+			// Counts
+			$item['likes'] = empty($item['likes']->summary->total_count) ? 0 : $item['likes']->summary->total_count;
+			$item['comments'] = empty($item['comments']->summary->total_count) ? 0 : $item['comments']->summary->total_count;
+
+			$data[] = $item;
 		}
-	}
 
+		return $data;
+	}
 }
-?>
