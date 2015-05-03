@@ -13,6 +13,7 @@ require_once( FACEBOOK_PAGE_ALBUMS_DIR . '/class-facebook-page-albums-dbmanager.
 use Facebook\FacebookSession;
 use Facebook\FacebookRequest;
 use Facebook\FacebookRequestException;
+use Facebook\FacebookResponse;
 
 /**
  * API Manager
@@ -21,10 +22,11 @@ use Facebook\FacebookRequestException;
  */
 class FacebookPageAlbumsAPIManager {
 	private $session = null;
-	private $db = null;
 	private $page_id = null;
-	public $client = null;
 	public $error = array();
+
+	/** @var FacebookPageAlbumsDBManager $db */
+	private $db = null;
 
 
 	/**
@@ -69,7 +71,7 @@ class FacebookPageAlbumsAPIManager {
 	 *
 	 * @param  String $query  Graph API Query
 	 * @param  String|Array $params Parameter
-	 * @return Array
+	 * @return Object
 	 */
 	public function get($query=null, $params=array()) {
 		if (empty($query) ||
@@ -105,6 +107,7 @@ class FacebookPageAlbumsAPIManager {
 			error_log($ex);
 		}
 
+		/** @var FacebookResponse $results*/
 		return $results;
 	}
 
@@ -119,6 +122,7 @@ class FacebookPageAlbumsAPIManager {
 	public function get_albums($args=array()) {
 		$args = wp_parse_args($args, array(
 			'cover_photo' => false,
+			'profile' => false,
 			'fields' => array(
 				'id',
 				'name',
@@ -133,6 +137,8 @@ class FacebookPageAlbumsAPIManager {
 				'likes.limit(1).summary(true)',
 				'comments.limit(1).summary(true)',
 			),
+			'after' => null,
+			'before' => null,
 			'per_page' => 25,
 			'paged'    => 1
 		));
@@ -152,8 +158,19 @@ class FacebookPageAlbumsAPIManager {
 		if (!empty($args['fields'])) {
 			$params[] = 'fields=' . implode(',', $args['fields']);
 		}
+		// After
+		if (!empty($args['after'])) {
+			$params[] = 'after=' . $args['after'];
+		}
+		// Previous
+		if (!empty($args['before'])) {
+			$params[] = 'before=' . $args['before'];
+		}
 
-		// Get
+
+		//
+		// Get Request
+		//
 		if (!$albums = $this->get('/' . $this->page_id . '/albums', $params)) {
 			return false;
 		}
@@ -166,15 +183,22 @@ class FacebookPageAlbumsAPIManager {
 		foreach ($albums->data as $item) {
 			$item = $this->get_album_data($item);
 
-			// Cover Photo
+			// Cover Photo Album
 			if ($item['type'] == 'cover' && empty($args['cover_photo'])) {
+				continue;
+			}
+			// Profile Album
+			if ($item['type'] == 'profile' && empty($args['profile'])) {
 				continue;
 			}
 
 			$data[] = $item;
 		}
 
-		return $data;
+		return array(
+			'data' => $data,
+			'paging' => isset($albums->paging) ? $albums->paging : false
+		);
 	}
 
 
@@ -267,7 +291,7 @@ class FacebookPageAlbumsAPIManager {
 
 
 		//
-		// Build pagenation parameters
+		// Build pagination parameters
 		//
 		$params = array();
 		if (!empty($args['per_page'])) {

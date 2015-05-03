@@ -3,7 +3,7 @@ Contributors: daiki.suganuma
 Tags: facebook, facebook pages, facebook graph api, album, photos
 Requires at least: 4.0
 Tested up to: 4.2.1
-Stable tag: 2.0.0
+Stable tag: 3.0.0
 License: Apache License Version 2.0
 License URI: http://www.apache.org/licenses/LICENSE-2.0
 
@@ -72,5 +72,9 @@ If a lots of request came to me, I will develop the feature providing html and j
 = 2.0.0 =
 * Update Facebook PHP SDK v4.0
 * Update example theme
-* Changed data structure of "likes" and "comments".
+
+= 3.0.0 =
+* Remove original cache system using wp_options.
+* Fixed functions for paging album list
+* Update example theme.
 

@@ -15,7 +15,7 @@ class FacebookPageAlbumsAdmin {
 	private $db = null;
 
 	/**
-	 * constructer
+	 * Constructor
 	 */
 	public function __construct() {
 		require_once( 'class-facebook-page-albums-dbmanager.php' );
@@ -31,19 +31,29 @@ class FacebookPageAlbumsAdmin {
 	}
 
 
+	/**
+	 * Execute activated
+	 */
 	public function activation() {
 		$this->db->initialize();
 	}
 
 
+	/**
+	 * Execute deactivated
+	 */
 	public function deactivation() {
 		$this->db->destroy();
 
 		// Remove cron hook
+		// @deprecated This will remove next release
 		wp_clear_scheduled_hook('facebook_page_albums_cron_hook');
 	}
 
 
+	/**
+	 * Add Menu
+	 */
 	public function menu() {
 		add_options_page(__('Facebook Page Albums', 'facebook_page_albums')
 						 , __('Facebook Page Albums', 'facebook_page_albums')
@@ -53,6 +63,9 @@ class FacebookPageAlbumsAdmin {
 	}
 
 
+	/**
+	 * Config page
+	 */
 	public function admin_page() {
 		$messages = array();
 
@@ -64,22 +77,6 @@ class FacebookPageAlbumsAdmin {
 			$config['secret'] = $_POST['secret'];
 			$config['pageId'] = $_POST['pageId'];
 			$this->db->set_api_option($config);
-
-			// Common Settings
-			$config = array();
-			$config['enable_album_cache'] = (empty($_POST['enable_album_cache'])) ? false : $_POST['enable_album_cache'];
-			$this->db->set_common_option($config);
-
-			// Set Cron Job
-			wp_clear_scheduled_hook( 'facebook_page_albums_cron_hook' );
-			if ($config['enable_album_cache']) {
-				// Register cron job
-				//wp_schedule_event( time(), 'debug', 'facebook_page_albums_cron_hook' );
-				wp_schedule_event( time(), 'hourly', 'facebook_page_albums_cron_hook' );
-			} else {
-				// Clear Cache
-				$this->db->save_album_list(null);
-			}
 
 			$messages[] = __('Saved');
 		}
@@ -100,11 +97,6 @@ class FacebookPageAlbumsAdmin {
 			<?php
 			// API Settings
 			$this->api_settings();
-			?>
-
-			<?php
-			// Common Settings
-			$this->common_settings();
 			?>
 
 			<?php submit_button(); ?>
@@ -144,37 +136,6 @@ class FacebookPageAlbumsAdmin {
 			<td>
 				<input class="regular-text" type="text" name="pageId" value="<?php echo $config['pageId'];?>"/>
 				<p class="example"><?php _e('Example: ', 'facebook_page_albums'); _e('cocacola', 'facebook_page_albums');?></p>
-			</td>
-		</tr>
-	</table>
-<?php
-	}
-
-
-	/**
-	 * Common Settings
-	 */
-	public function common_settings() {
-		$config = $this->db->get_common_option();
-		if ($last_update = $this->db->get_album_list_updated_time()) {
-			$last_update = date_i18n('Y/m/d H:i:s', $last_update);
-		} else {
-			$last_update = '';
-		}
-	?>
-	<h3 class="title"><?php _e('Common Settings', 'facebook_page_albums');?></h3>
-	<table class="form-table">
-		<tr>
-			<th><?php _e('Album Cache', 'facebook_page_albums');?></th>
-			<td>
-				<input type="checkbox" name="enable_album_cache" value="1" <?php if ( $config['enable_album_cache'] ) echo 'checked';?>/>
-				<?php _e('use album cache', 'facebook_page_albums');?>
-				<p>
-					<?php _e('if enabled, album data will be cache in database. It will be refresh each 1 hour by using WP-CRON.', 'facebook_page_albums');?>
-				</p>
-				<p>
-					<?php _e('Last updated: ', 'facebook_page_albums');?><?php echo $last_update;?>
-				</p>
 			</td>
 		</tr>
 	</table>

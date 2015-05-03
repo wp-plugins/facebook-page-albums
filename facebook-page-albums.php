@@ -3,13 +3,13 @@
  Plugin Name: Facebook Page Albums
  Plugin URI: http://wordpress.org/extend/plugins/facebook-page-albums/
  Description: Get the all albums/photos from your Facebook Page.
- Version: 2.0.0
+ Version: 2.1.0
  Author: Daiki Suganuma
  Author URI: http://se-suganuma.blogspot.com/
  */
 
 /**
- *  Copyright 2014 Daiki Suganuma  (email : daiki.suganuma@gmail.com)
+ *  Copyright 2015 Daiki Suganuma  (email : daiki.suganuma@gmail.com)
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may
  * not use this file except in compliance with the License. You may obtain
@@ -40,18 +40,17 @@ if ( is_admin() ) {
  * @package     facebook-page-albums
  */
 class FacebookPageAlbums {
+	public $paging = null;
+
+	/** @var FacebookPageAlbumsAPIManager $api */
 	private $api = null;
-	private $db = null;
-	private $config = null;
 
 
 	/**
 	 * Constructor
 	 */
 	public function __construct() {
-		require_once( FACEBOOK_PAGE_ALBUMS_DIR . '/class-facebook-page-albums-dbmanager.php' );
-		$this->db = new FacebookPageAlbumsDBManager();
-		$this->config = $this->db->get_common_option();
+		$this->load_api();
 	}
 
 
@@ -73,29 +72,13 @@ class FacebookPageAlbums {
 	 *   @type Integer page_id
 	 *   @type Boolean cover_photo
 	 *   @type Integer per_page
-	 *   @type Integer paged
+	 *   @type String after
+	 *   @type String previous
 	 * }
 	 * @return Array
 	 */
 	public function get_album_list( $args=array() ) {
-		$result = null;
-
-		// Get from cache data.
-		if ( $this->config['enable_album_cache'] ) {
-			$result = $this->db->get_album_list( $args );
-		}
-
-		if ( empty($result) ) {
-			$this->load_api();
-			$result = $this->api->get_albums( $args );
-
-			// Save cache data.
-			if ( !empty($result) && $this->config['enable_album_cache'] ) {
-				$this->db->save_album_list( $result );
-			}
-		}
-
-		return $result;
+		return $this->api->get_albums( $args );
 	}
 
 
@@ -106,31 +89,70 @@ class FacebookPageAlbums {
 	 * @return Array|Boolean
 	 */
 	public function get_album_info( $album_id ) {
-		if ( empty($album_id) ) {
+		return $this->api->get_album( $album_id );
+	}
+
+
+	/**
+	 * Get
+	 *
+	 * @param Array $args {
+	 *   @type String url
+	 * }
+	 * @return Array|Boolean
+	 */
+	public function get_paging_params( $args=array() ) {
+		$args = wp_parse_args($args, array(
+			'url' => false // "false" means use "$_SERVER['REQUEST_URI']" in add_query_arg
+		));
+
+		$result = array();
+
+		// Previous
+		if ($next = $this->parsing_paging_url( 'previous', $args )) {
+			$result['previous'] = add_query_arg($next, $args['url']);
+		}
+
+		// Next
+		if ($next = $this->parsing_paging_url( 'next', $args )) {
+			$result['next'] = add_query_arg($next, $args['url']);
+		}
+
+		return $result;
+	}
+
+
+	/**
+	 * Parse
+	 *
+	 * @param String $slug
+	 * @param Array $args
+	 * @return Array|Boolean
+	 */
+	protected function parsing_paging_url( $slug, $args=array() ) {
+		$args = wp_parse_args($args, array(
+			'access_token',
+			'fields'
+		));
+
+		if (!isset($this->paging->{$slug})) {
 			return false;
 		}
 
+		if (!$query = parse_url(urldecode($this->paging->{$slug}), PHP_URL_QUERY)) {
+			return false;
+		}
 
-		//
-		// From Cache
-		//
+		parse_str($query, $params);
 
-		// Get from cache data.
-		if ($data = $this->db->get_album_list()) {
-			foreach ($data as $item) {
-				if ($item['id'] == $album_id) {
-					return $item;
-				}
+		// Remove
+		foreach ($args as $item) {
+			if (isset($params[$item])) {
+				unset($params[$item]);
 			}
 		}
 
-
-		//
-		// From Facebook
-		//
-		$result = null;
-		$this->load_api();
-		return $this->api->get_album( $album_id );
+		return $params;
 	}
 
 
@@ -146,7 +168,6 @@ class FacebookPageAlbums {
 	 * @return Array|Boolean
 	 */
 	public function get_photo_list( $args=array() ) {
-		$this->load_api();
 		return $this->api->get_photos( $args );
 	}
 }
@@ -159,17 +180,19 @@ class FacebookPageAlbums {
  * @return Array
  */
 function facebook_page_albums_get_album_list( $args=array() ) {
+	/** @var FacebookPageAlbums $facebook_page_albums */
+	global $facebook_page_albums;
+
+	if ( empty($facebook_page_albums) ) {
+		$facebook_page_albums = new FacebookPageAlbums();
+	}
+
 	// Get Object Cache
 	$cache_name = 'album_list' . implode('', $args);
 	$result = wp_cache_get( $cache_name, FACEBOOK_PAGE_ALBUMS_CACHE_GROUP );
 
 	if ( empty($result) ) {
-		// Get from API
-		global $facebook_page_albums;
-
-		if ( empty($facebook_page_albums) ) {
-			$facebook_page_albums = new FacebookPageAlbums();
-		}
+		// Get from Facebook API
 		$result = $facebook_page_albums->get_album_list( $args );
 		if ( !empty($result) ) {
 			// Save Object Cache
@@ -177,7 +200,32 @@ function facebook_page_albums_get_album_list( $args=array() ) {
 		}
 	}
 
-	return $result;
+	// Paging
+	if (!empty($result['paging'])) {
+		$facebook_page_albums->paging = $result['paging'];
+	}
+
+	return empty($result['data']) ? false : $result['data'];
+}
+
+
+/**
+ * Get Paging
+ *
+ * @param Array $args {
+ *   @type String url
+ * }
+ * @return Array
+ */
+function facebook_page_albums_get_paging($args=array()) {
+	/** @var FacebookPageAlbums $facebook_page_albums */
+	global $facebook_page_albums;
+
+	if (!$facebook_page_albums) {
+		return false;
+	}
+
+	return $facebook_page_albums->get_paging_params($args);
 }
 
 
@@ -188,17 +236,19 @@ function facebook_page_albums_get_album_list( $args=array() ) {
  * @return Array
  */
 function facebook_page_albums_get_album( $album_id ) {
+	/** @var FacebookPageAlbums $facebook_page_albums */
+	global $facebook_page_albums;
+
+	if ( empty($facebook_page_albums) ) {
+		$facebook_page_albums = new FacebookPageAlbums();
+	}
+
 	// Get Object Cache
 	$cache_name = 'album_info' . $album_id;
 	$result = wp_cache_get( $cache_name, FACEBOOK_PAGE_ALBUMS_CACHE_GROUP );
 
 	if ( empty($result) ) {
-		// Get from API
-		global $facebook_page_albums;
-
-		if ( empty($facebook_page_albums) ) {
-			$facebook_page_albums = new FacebookPageAlbums();
-		}
+		// Get from Facebook API
 		$result = $facebook_page_albums->get_album_info( $album_id );
 		if ( !empty($result) ) {
 			// Save Object Cache
@@ -218,17 +268,19 @@ function facebook_page_albums_get_album( $album_id ) {
  * @return array             photo list
  */
 function facebook_page_albums_get_photo_list( $album_id, $args=array() ) {
+	/** @var FacebookPageAlbums $facebook_page_albums */
+	global $facebook_page_albums;
+
+	if ( empty($facebook_page_albums) ) {
+		$facebook_page_albums = new FacebookPageAlbums();
+	}
+
 	// Get Object Cache
 	$cache_name = 'photo_list' . $album_id . implode('', $args);
 	$result = wp_cache_get( $cache_name, FACEBOOK_PAGE_ALBUMS_CACHE_GROUP );
 
 	if ( empty($result) ) {
-		// Get from API
-		global $facebook_page_albums;
-
-		if ( empty($facebook_page_albums) ) {
-			$facebook_page_albums = new FacebookPageAlbums();
-		}
+		// Get from Facebook API
 		$args['album_id'] = $album_id;
 		$result = $facebook_page_albums->get_photo_list( $args );
 		if ( !empty($result) ) {
@@ -241,48 +293,13 @@ function facebook_page_albums_get_photo_list( $album_id, $args=array() ) {
 }
 
 
-/**
- * This function will fire if 'Enable Cache' is enable on admin panel.
- *
- * @return Boolean
- */
-function facebook_page_albums_get_album_list_cron() {
-	// Get all albums from facebook
-	require_once( FACEBOOK_PAGE_ALBUMS_DIR . '/class-facebook-page-albums-apimanager.php');
-	require_once( FACEBOOK_PAGE_ALBUMS_DIR . '/class-facebook-page-albums-dbmanager.php' );
-
-	$api = new FacebookPageAlbumsAPIManager();
-	$db = new FacebookPageAlbumsDBManager();
-	if ( $result = $api->get_albums( array('per_page' => 0) ) ) {
-		$db->save_album_list( $result );
-	}
-	return true;
-}
-add_action('facebook_page_albums_cron_hook', 'facebook_page_albums_get_album_list_cron');
-
-
 //
 // Debug Functions
 //
-/**
- * Add cron schedule time for debug
- *
- * @see https://codex.wordpress.org/Plugin_API/Filter_Reference/cron_schedulesf
- * @param Array $schedules
- * @return Array
- */
-function cron_add_debug( $schedules ) {
-	$schedules['debug'] = array(
-		'interval' => 60, // 60 seconds
-		'display' => __( '1min for Debug' )
-	);
-	return $schedules;
-}
-if ( WP_DEBUG ) {
-	add_filter( 'cron_schedules', 'cron_add_debug' );
-}
-
 if ( !function_exists('alog') ) {
+	/**
+	 * Describe variable as HTML Table
+	 */
 	function alog() {
 		if ( !WP_DEBUG ) {return;}
 
@@ -294,6 +311,9 @@ if ( !function_exists('alog') ) {
 }
 
 if ( !function_exists('dlog') ) {
+	/**
+	 * Dump variable
+	 */
 	function dlog() {
 		if ( !WP_DEBUG ) {return;}
 

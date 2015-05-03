@@ -10,7 +10,7 @@
 	<meta charset="<?php bloginfo( 'charset' ); ?>"/>
 	<meta name="viewport" content="width=device-width"/>
 	<title><?php wp_title( '|', true, 'right' ); ?></title>
-	<?php wp_head(); ?>
+	<link rel="stylesheet" type="text/css" media="all" href="<?php bloginfo( 'stylesheet_url' ); ?>" />
 </head>
 <body <?php body_class(); ?>>
 	<div id="main">
@@ -29,7 +29,6 @@
 			</div><!-- #content -->
 		</div><!-- #container -->
 	</div>
-	<?php wp_footer(); ?>
 </body>
 </html>
 <?php
@@ -38,60 +37,80 @@
  * Render the album list
  */
 function theme_show_albums() {
-//
-// Get Album List
-//
-$list = facebook_page_albums_get_album_list();
-if (empty($list)) :
+	//
+	// Get Album List
+	//
+	$list = facebook_page_albums_get_album_list(wp_parse_args($_GET, array(
+		'per_page' => 10
+	)));
+	if (empty($list)) :
+		?>
+		<p>
+			No album list, but plugin installed correctly.<br/>
+			Please check the settings in admin panel.<br/>
+			And please check the
+			<a href="http://wordpress.org/support/plugin/facebook-page-albums" target="_blank">plugin official site</a>
+		</p>
+		<?php
+		return;
+	endif;
 	?>
-	<p>
-		No album list, but plugin installed correctly.<br/>
-		Please check the settings in admin panel.<br/>
-		And please check the
-		<a href="http://wordpress.org/support/plugin/facebook-page-albums" target="_blank">plugin official site</a>
-	</p>
-<?php
-	return;
-endif;
-?>
-<ol class="album-list">
+	<ol class="album-list list">
 	<?php
 	//
 	// Loop Album List and Render items
 	//
 	if (!empty($list)) : foreach ($list as $item) :
-		if ($item['type'] != 'normal' || $item['name'] == 'Cover Photos') {
-			continue;
-		}
-
 		// Link to each album
-		$link = add_query_arg('id', $item['id']);
+		$link = add_query_arg('id', $item['id'], site_url('/'));
 		?>
 		<li class="album">
 			<?php
 			// It has a thumbnail
 			if ($thumb = $item['cover_photo_data']):?>
-				<div class="album-thumb">
+				<div class="album-thumb thumb">
 					<a href="<?php echo $link;?>">
 						<img src="<?php echo $thumb['picture'];?>"/>
 					</a>
 				</div>
 			<?php endif; ?>
-			<div class="album-info">
-				<h5><a href="<?php echo $link;?>"><?php echo $item['name'];?></a></h5>
+			<div class="album-info info">
+				<h5>
+					<a href="<?php echo $link;?>"><?php echo $item['name'];?></a>
+				</h5>
 				<div class="counts">
-					<div class="photos-count"><?php echo $item['count'];?></div>
-					<?php if (!empty($thumb['comments'])) :?>
-						<div class="comments-count">Comments: <?php echo count($thumb['comments']['data']);?></div>
-					<?php endif;?>
-					<?php if (!empty($thumb['likes'])) :?>
-						<div class="likes-count">Likes: <?php echo count($thumb['likes']['data']);?></div>
-					<?php endif;?>
+					<div class="photos-count">
+						Photos: <?php echo $item['count'];?>
+					</div>
+					<div class="comments-count">
+						Comments: <?php echo $item['comments'];?>
+					</div>
+					<div class="likes-count">
+						Likes: <?php echo $item['likes'];?>
+					</div>
 				</div>
 			</div>
 		</li>
-	<?php endforeach; endif;?>
-</ol>
+	<?php
+		//alog($item); // Show data structure
+	endforeach; endif;?>
+	</ol>
+	<div class="page-control">
+		<?php
+		//
+		// Page Controller
+		//
+		$params = facebook_page_albums_get_paging(array(
+			'url' => site_url('/')
+		));
+		if (!empty($params['previous'])) {
+			echo '<a class="previous" href="' . $params['previous'] . '">previous</a>';
+		}
+		if (!empty($params['next'])) {
+			echo '<a class="next" href="' . $params['next'] . '">next</a>';
+		}
+		?>
+	</div>
 <?php
 }
 
@@ -99,12 +118,13 @@ endif;
 /**
  * Render the photo list
  *
- * @param Integer
+ * @param Integer $id
+ * @return null
  */
 function theme_show_photos($id) {
 	global $paged;
 
-	$per_page = 30;
+	$per_page = 5;
 	if (empty($paged)) $paged = 1;
 
 	// Album Information
@@ -122,63 +142,71 @@ function theme_show_photos($id) {
 		'paged'    => $paged
 	))) {
 		echo 'failed to get photo list';
-		return;
+		return false;
 	}
 	?>
 	<div class="photo-list-header">
-		<h4><a href="<?php echo $album['link'];?>" target="_blank"><?php echo $album['name'];?></a></h4>
+		<h4>
+			<a href="<?php echo $album['link'];?>" target="_blank"><?php echo $album['name'];?></a>
+		</h4>
 		<div class="counts">
-			<?php if (!empty($album['count'])) :?>
-				<div class="photos-count">Number of Photos: <?php echo $album['count'];?></div>
-			<?php endif;?>
-			<?php if (!empty($album['comments'])) :?>
-				<div class="comments-count">Comments: <?php echo count($album['comments']['data']);?></div>
-			<?php endif;?>
-			<?php if (!empty($album['likes'])) :?>
-				<div class="likes-count">Likes: <?php echo count($album['likes']['data']);?></div>
-			<?php endif;?>
+			<div class="photos-count">
+				Number of Photos: <?php echo $album['count'];?>
+			</div>
+			<div class="comments-count">
+				Comments: <?php echo $album['comments'];?>
+			</div>
+			<div class="likes-count">
+				Likes: <?php echo $album['likes'];?></div>
 		</div>
 		<a class="goto-facebook" href="<?php echo $album['link'];?>" target="_blank" title="See on Facebook">See on Facebook</a>
 	</div>
-	<ol class="photo-list">
+	<ol class="photo-list list">
 		<?php if (!empty($list)): foreach ($list as $item):?>
 			<?php
+			//alog($item);
 			// It has some images of different sizes.
-			// var_dump($item);
-			$thumbnail = $item['images'][5];?>
+			$thumbnail = (array) $item['images'][count($item['images']) - 1];?>
 			<li class="photo">
-				<div class="photo-thumb">
+				<div class="photo-thumb thumb">
 					<a class="photo-link"
-					   href="<?php echo $item['source'];?>"
-					   title="<?php if (!empty($item['name'])) echo $item['name'];?>">
+					   href="<?php echo $item['source'];?>">
 						<img src="<?php echo $thumbnail['source'];?>"/>
 					</a>
 				</div>
-				<div class="photo-info">
+				<div class="photo-info info">
 					<div class="counts">
-						<?php if (!empty($item['comments'])) :?>
-							<div class="comments-count">Comments: <?php echo count($item['comments']['data']);?></div>
-						<?php endif;?>
-						<?php if (!empty($item['likes'])) :?>
-							<div class="likes-count">Likes: <?php echo count($item['likes']['data']);?></div>
-						<?php endif;?>
+						<div class="comments-count">
+							Comments: <?php echo $item['comments'];?>
+						</div>
+						<div class="likes-count">
+							Likes: <?php echo $item['likes'];?>
+						</div>
 					</div>
 				</div>
 			</li>
-		<?php endforeach; endif;?>
+		<?php
+			//alog($item); // Show Data Structure.
+		endforeach; endif;?>
 	</ol>
+	<div class="page-control">
+		<?php
+		//
+		// Page Control
+		//
+		echo paginate_links( array(
+			'base' => add_query_arg( 'paged', '%#%' ),
+			'format' => '',
+			'total' => ceil($album['count'] / $per_page),
+			'current' => $paged,
+			'prev_text' => '&laquo;',
+			'next_text' => '&raquo;',
+			'mid_size' => 5
+		));
+		?>
+	</div>
 <?php
-	//
-	// Page Controller
-	//
-	echo paginate_links( array(
-		'base' => add_query_arg( 'paged', '%#%' ),
-		'format' => '',
-		'total' => ceil($album['count'] / $per_page),
-		'current' => $paged,
-		'prev_text' => '&laquo;',
-		'next_text' => '&raquo;',
-		'mid_size' => 5
-	));
+	return true;
 }
+?>
 
